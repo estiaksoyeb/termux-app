@@ -10,6 +10,19 @@
       https://github.com/material-components/material-components-android/blob/1.4.0/lib/java/com/google/android/material/theme/res/values/themes.xml#L33
      -->
     <style name="Theme.BaseActivity.Light.DarkActionBar" parent="Theme.MaterialComponents.Light.DarkActionBar">
+        <!--
+         Text metrics are pinned to the platform Theme.Material defaults that v0.118.3 used.
+         MaterialComponents raises Body1 to 16sp with letter spacing and gives MaterialButton
+         ~28dp of insets and padding, which wraps labels such as "New session" in the 240dp
+         drawer. These overrides restore the old widths without changing any layout.
+        -->
+        <item name="textAppearanceBody1">@style/TextAppearance.Termux.Body1</item>
+        <item name="textAppearanceButton">@style/TextAppearance.Termux.Button</item>
+        <item name="materialButtonStyle">@style/Widget.Termux.Button</item>
+        <item name="borderlessButtonStyle">@style/Widget.Termux.Button.Borderless</item>
+        <item name="android:buttonBarButtonStyle">@style/Widget.Termux.Button.Borderless</item>
+        <item name="android:textAppearanceButton">@style/TextAppearance.Termux.Button</item>
+
         <!-- Primary brand color. -->
         <item name="colorPrimary">@color/red_400</item>
         <item name="colorPrimaryVariant">@color/red_800</item>
