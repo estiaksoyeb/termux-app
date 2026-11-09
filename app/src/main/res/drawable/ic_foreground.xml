@@ -1,28 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+ Launcher foreground for this SSH-only fork.
+ A terminal prompt chevron with "ssh" written where Termux puts the cursor line.
+
+ Text is drawn as letter strokes rather than a font because vector drawables cannot
+ reference a typeface. Keep the geometry in sync with the legacy mipmap PNGs
+ (setup/render-legacy-icons.py).
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:height="108dp"
     android:width="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Keep in sync with non-adaptive ic_launcher.xml -->
+    <!-- Terminal prompt chevron: > -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M34,38
-                          h6
-                          l12,16
-                          l-12,16
-                          h-6
-                          l12,-16
-                          "
-        />
+        android:pathData="M30,44
+                          L41,54
+                          L30,64
+                          L34.5,64
+                          L45.5,54
+                          L34.5,44
+                          Z" />
 
+    <!-- s -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M56,66
-                          h18
-                          v4
-                          h-18
-                          "
-        />
+        android:fillType="evenOdd"
+        android:pathData="M50,58.5
+                          h5.5
+                          v1.8
+                          h-3.7
+                          l3.7,2.2
+                          v3.0
+                          h-5.5
+                          v-1.8
+                          h3.7
+                          l-3.7,-2.2
+                          Z" />
+
+    <!-- s -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M58,58.5
+                          h5.5
+                          v1.8
+                          h-3.7
+                          l3.7,2.2
+                          v3.0
+                          h-5.5
+                          v-1.8
+                          h3.7
+                          l-3.7,-2.2
+                          Z" />
+
+    <!-- h -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M66,58.5
+                          h1.8
+                          v2.5
+                          h3.0
+                          v-2.5
+                          h1.8
+                          v7.0
+                          h-1.8
+                          v-3.0
+                          h-3.0
+                          v3.0
+                          h-1.8
+                          Z" />
 
 </vector>
