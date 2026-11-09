@@ -24,6 +24,7 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.RelativeLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.termux.R;
@@ -250,6 +251,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         setNewSessionButtonView();
 
         setToggleKeyboardView();
+
+        setZoomButtonsView();
 
         registerForContextMenu(mTerminalView);
 
@@ -592,6 +595,53 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             toggleTerminalToolbar();
             return true;
         });
+    }
+
+    private void setZoomButtonsView() {
+        findViewById(R.id.zoom_out_button).setOnClickListener(v -> changeFontSizeAndUpdateZoomPercentage(false));
+        findViewById(R.id.zoom_in_button).setOnClickListener(v -> changeFontSizeAndUpdateZoomPercentage(true));
+
+        // Long press resets to the default font size, the same size the drawer shows as 100%.
+        View.OnLongClickListener resetZoomListener = v -> {
+            getPreferences().setFontSize(getDefaultFontSize());
+            mTerminalView.setTextSize(getPreferences().getFontSize());
+            updateZoomPercentage();
+            return true;
+        };
+        findViewById(R.id.zoom_out_button).setOnLongClickListener(resetZoomListener);
+        findViewById(R.id.zoom_in_button).setOnLongClickListener(resetZoomListener);
+
+        updateZoomPercentage();
+    }
+
+    private void changeFontSizeAndUpdateZoomPercentage(boolean increase) {
+        // changeFontSize() applies the new size to the terminal view, which re-measures the rows
+        // and columns and notifies the running session.
+        mTermuxTerminalViewClient.changeFontSize(increase);
+        updateZoomPercentage();
+    }
+
+    /** Update the zoom percentage shown in the drawer relative to the default font size. */
+    private void updateZoomPercentage() {
+        TextView zoomPercentage = findViewById(R.id.zoom_percentage_text);
+        if (zoomPercentage == null) return;
+
+        int defaultFontSize = getDefaultFontSize();
+        int currentFontSize = getPreferences().getFontSize();
+        int percentage = defaultFontSize > 0 ? Math.round(100f * currentFontSize / defaultFontSize) : 100;
+
+        zoomPercentage.setText(getString(R.string.msg_zoom_percentage, percentage));
+
+        // Dim a segment when its limit has been reached, so the control reads as disabled at the ends.
+        int[] defaultSizes = TermuxAppSharedPreferences.getDefaultFontSizes(this);
+        View zoomOut = findViewById(R.id.zoom_out_button);
+        View zoomIn = findViewById(R.id.zoom_in_button);
+        if (zoomOut != null) zoomOut.setAlpha(currentFontSize <= defaultSizes[1] ? 0.4f : 1f);
+        if (zoomIn != null) zoomIn.setAlpha(currentFontSize >= defaultSizes[2] ? 0.4f : 1f);
+    }
+
+    private int getDefaultFontSize() {
+        return TermuxAppSharedPreferences.getDefaultFontSizes(this)[0];
     }
 
 
@@ -980,6 +1030,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         setMargins();
         setTerminalToolbarHeight();
+        updateZoomPercentage();
 
         FileReceiverActivity.updateFileReceiverActivityComponentsState(this);
 
