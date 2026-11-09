@@ -64,4 +64,45 @@
         <item name="android:background">?android:attr/listDivider</item>
     </style>
 
+
+
+
+
+    <!--
+     Platform `Theme.Material` text metrics, restored on top of MaterialComponents.
+     v0.118.3 used the platform theme, where body text was 14sp with no letter spacing and
+     buttons carried no extra insets or tracking.
+    -->
+    <style name="TextAppearance.Termux.Body1" parent="@style/TextAppearance.MaterialComponents.Body1">
+        <item name="android:textSize">14sp</item>
+        <item name="android:letterSpacing">0</item>
+    </style>
+
+    <style name="TextAppearance.Termux.Button" parent="@style/TextAppearance.MaterialComponents.Button">
+        <item name="android:textSize">14sp</item>
+        <item name="android:letterSpacing">0</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textStyle">normal</item>
+    </style>
+
+    <!-- A MaterialButton without the 6dp inset and the 16dp/8dp side padding. -->
+    <style name="Widget.Termux.Button" parent="@style/Widget.MaterialComponents.Button">
+        <item name="android:insetLeft">0dp</item>
+        <item name="android:insetRight">0dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:paddingLeft">0dp</item>
+        <item name="android:paddingRight">0dp</item>
+    </style>
+
+    <style name="Widget.Termux.Button.Borderless" parent="@style/Widget.MaterialComponents.Button.TextButton">
+        <item name="android:insetLeft">0dp</item>
+        <item name="android:insetRight">0dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:paddingLeft">0dp</item>
+        <item name="android:paddingRight">0dp</item>
+    </style>
+
 </resources>
