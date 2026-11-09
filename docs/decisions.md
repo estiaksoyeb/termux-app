@@ -230,9 +230,14 @@ corrupts it: that segment's first page is shared with the preceding `LOAD`, whic
 is fine and isolates the failure to the relocation.
 
 **Consequence:** the wrapper is the only place that knows about this. `ssh-add`,
-`ssh-keygen`, `ssh-keyscan` and `ssh-copy-id` reject `-o`, so they get no options—
-the first three use no user host-key/identity files from that home anyway, and
+`ssh-keygen`, `ssh-keyscan` and `ssh-copy-id` reject `-o`, so they get no options;
 `ssh-copy-id` is a shell script that calls `ssh` and inherits its wrapper.
+
+`IdentityFile` is deliberately **not** overridden. Its default is the literal string
+`~/.ssh/id_*`, expanded against `$HOME` at runtime, so it already points at the fork's
+home. Forcing absolute paths made ssh announce each missing key
+(`no such identity: …`) on every connection and replaced the default list, silently
+dropping the `_sk` variants.
 
 ### Create `~/.ssh` on first shell start
 

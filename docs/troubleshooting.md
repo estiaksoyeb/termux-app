@@ -353,10 +353,12 @@ and grow with each new host.
 
 ### `no such identity: …/.ssh/id_rsa: No such file or directory`
 
-**Cause:** not an error. ssh is now looking in the *correct* directory (the fork's home) and
-reporting that those key files don't exist yet. It is only noise until you create keys.
+**Cause:** ssh was given absolute `-o IdentityFile` paths, so it announced every key that
+did not exist. Its real default is `~/.ssh/id_*` (six entries, including the `_sk`
+variants), expanded against `$HOME` at runtime and correct without any override.
 
-**Silence it:** `ssh-keygen -t ed25519` creates the first file in the list.
+**Fix:** the wrapper no longer sets `IdentityFile`. Nothing is left to silence — a missing
+key is simply not mentioned.
 
 ---
 

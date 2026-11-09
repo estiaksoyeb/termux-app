@@ -437,11 +437,10 @@ fi
 #    re-injected without patching. Kept deliberately.
 #
 #    The wrapper also repoints the user config paths. OpenSSH derives
-#    UserKnownHostsFile and the default IdentityFile list from the passwd home
-#    directory, which Termux bakes into the binary as
-#    /data/data/com.termux/files/home (Android has no usable passwd entry).
-#    $HOME does not override it, so on this fork ssh would read and write the
-#    *stock* Termux home and fail with
+#    UserKnownHostsFile from the passwd home directory, which Termux bakes into
+#    the binary as /data/data/com.termux/files/home (Android has no usable
+#    passwd entry). $HOME does not override it, so on this fork ssh would read
+#    and write the *stock* Termux home and fail with
 #        hostkeys_find_by_key_hostfile: hostkeys_foreach failed for
 #        /data/data/com.termux/files/home/.ssh/known_hosts: Permission denied
 #    The path cannot simply be rewritten in the ELF: the fork prefix is longer,
@@ -466,13 +465,16 @@ for tool in ssh scp sftp ssh-keygen ssh-keyscan ssh-copy-id ssh-add; do
     # system ssh_config lands it on the stock app's read-only etc/ssh path.
     # Pointing it at our own (optional) copy removes the spurious
     # "hostkeys_foreach failed ... Permission denied" warning.
+    #
+    # IdentityFile is deliberately NOT overridden. Those defaults are the literal
+    # string ~/.ssh/id_*, expanded against $HOME at runtime, so they already point
+    # at the fork's home. Forcing absolute paths only made ssh announce every
+    # missing key ("no such identity: ...") and replaced the default list, which
+    # silently dropped the _sk variants.
     case "$tool" in
         ssh|scp|sftp)
             HOSTOPTS="-o UserKnownHostsFile=$FORK_HOME/.ssh/known_hosts"
             HOSTOPTS="$HOSTOPTS -o GlobalKnownHostsFile=$FORK_PREFIX/etc/ssh/ssh_known_hosts"
-            for kind in id_rsa id_ecdsa id_ed25519 id_mldsa44_ed25519; do
-                HOSTOPTS="$HOSTOPTS -o IdentityFile=$FORK_HOME/.ssh/$kind"
-            done
             ;;
         *)  HOSTOPTS="" ;;
     esac
