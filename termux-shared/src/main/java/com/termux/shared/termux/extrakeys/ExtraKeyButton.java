@@ -25,6 +25,9 @@ public class ExtraKeyButton {
     /** The key name for the nested dict to define popup extra key info if using a dict to define the extra key. {popup: {key: name, ...}, ...} */
     public static final String KEY_POPUP = "popup";
 
+    /** The key name for making a macro button behave like a toggle if using a dict to define the extra key. {macro: value, toggle: true, ...} */
+    public static final String KEY_TOGGLE = "toggle";
+
 
     /**
      * The key that will be sent to the terminal, either a control character, like defined in
@@ -47,6 +50,13 @@ public class ExtraKeyButton {
      */
     @Nullable
     private final ExtraKeyButton popup;
+
+    /**
+     * If the button should stay in the active text color after being tapped, until the next input
+     * is typed. Only valid for macro buttons. Useful for keys that enter a mode (e.g. a tmux
+     * prefix) where the user needs to know whether the button has been pressed.
+     */
+    private final boolean toggle;
 
 
     /**
@@ -110,6 +120,7 @@ public class ExtraKeyButton {
         }
 
         this.popup = popup;
+        this.toggle = getBooleanFromJson(config, KEY_TOGGLE);
     }
 
     public String getStringFromJson(@NonNull JSONObject config, @NonNull String key) {
@@ -117,6 +128,14 @@ public class ExtraKeyButton {
             return config.getString(key);
         } catch (JSONException e) {
             return null;
+        }
+    }
+
+    public boolean getBooleanFromJson(@NonNull JSONObject config, @NonNull String key) {
+        try {
+            return config.getBoolean(key);
+        } catch (JSONException e) {
+            return false;
         }
     }
 
@@ -139,6 +158,11 @@ public class ExtraKeyButton {
     @Nullable
     public ExtraKeyButton getPopup() {
         return popup;
+    }
+
+    /** Check whether the button stays in the active text color until the next typed input. */
+    public boolean isToggle() {
+        return toggle;
     }
 
     /**
