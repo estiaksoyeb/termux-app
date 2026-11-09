@@ -82,7 +82,8 @@ inspected on its own.
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-Result: **30.5 MB → 8.7 MB** compressed, **21.5 MB** unpacked (230 entries).
+Result: **30.5 MB → 22 MB** compressed, **51.4 MB** unpacked (2135 entries). The growth over the
+ssh-only cut (8.7 MB / 21.5 MB) is vim plus its runtime.
 
 The earliest build was 8.1 MB / 23 files, but that archive was too thin to be usable: it had
 no `chmod`, `mkdir`, `ls` or `cat` at all. The extra ~0.6 MB is `bin/coreutils` (1.2 MB
@@ -206,11 +207,33 @@ Kept:
 
 | Path | Contents |
 |---|---|
-| `bin/` | 24 files: `ssh`, `scp`, `sftp`, `ssh-keygen`, `ssh-keyscan`, `ssh-add`, `ssh-copy-id` (each with a `.real`), `bash`, `dash`, `sh→dash`, `login`, `sed`, `grep`, `gawk`, `clear`, `coreutils`, `termux-exec-*` |
-| `lib/` | 28 shared libraries — the resolved dependency closure |
+| `bin/` | 24 files: `ssh`, `scp`, `sftp`, `ssh-keygen`, `ssh-keyscan`, `ssh-add`, `ssh-copy-id` (each with a `.real`), `bash`, `dash`, `sh→dash`, `login`, `sed`, `grep`, `gawk`, `clear`, `coreutils`, `termux-exec-*`, plus `vim` and its entry points |
+| `lib/` | 28 shared libraries — the resolved dependency closure, including `libsodium.so` and `libiconv.so` for vim |
 | `etc/ssh/` | ssh client configuration |
 | `etc/tls/` | CA certificates (without these, host verification fails) |
-| `libexec/`, `share/` | what remains after closure filtering |
+| `libexec/vim/`, `share/vim/` | the vim binary and its runtime (syntax, ftplugins, colors) |
+
+### The editor: vim
+
+The stock bootstrap ships **no vim** (only `nano` and `ed`), so vim is injected the same way as
+ssh: the official Termux arm64 `.deb` for `vim` is downloaded in `setup/add-ssh.sh` and relocated
+into the fork prefix, together with `libiconv` and `libsodium`.
+
+Two things need care:
+
+- The package installs only `libexec/vim/vim`. Normally its `postinst` creates `bin/vim`, `bin/vi`,
+  `bin/ex`, `bin/view`, `bin/vimdiff` and `bin/vimtutor` through `update-alternatives`, which this
+  fork does not have. `add-ssh.sh` therefore appends those seven links to `SYMLINKS.txt` itself.
+  They must be **entries in `SYMLINKS.txt`**, not real symlinks in the staging tree: `zip` stores
+  symlinks dereferenced, so a real link would embed six 4 MB copies of the binary.
+- vim has `/data/data/com.termux/files/usr/share/vim` compiled into its `.rodata` and uses it as
+  `$VIMRUNTIME`. The fork prefix is longer, so the string cannot be patched in place. Instead
+  `etc/profile.d/03-sshterm-vimruntime.sh` exports `VIMRUNTIME` pointing at the fork's own
+  `share/vim/vim92` — the same workaround used for ncurses' `TERMINFO`.
+
+The 12 MB of vim help text (`share/vim/vim92/doc`) is dropped, like man pages. The runtime itself
+is kept: without `syntax/`, `ftplugin/` and `colors/` vim starts but loses highlighting and
+filetype behaviour.
 
 ### Coreutils aliases
 
@@ -228,7 +251,9 @@ Two things follow, and both were bugs:
   disappears and `clear` breaks.
 
 `SYMLINKS.txt` is rewritten afterwards so it only lists links that still exist. It ends up with
-**121** entries: 100 coreutils aliases, the `.so` soname links, `bin/sh`, and `lib/terminfo`.
+**128** entries: 100 coreutils aliases, the `.so` soname links, `bin/sh`, `lib/terminfo`, and the
+seven vim entry points (`bin/vim`, `bin/vi`, `bin/ex`, `bin/view`, `bin/vimdiff`, `bin/vimtutor`,
+`bin/editor`).
 
 An entry whose name is *also* a real file is removed: `TermuxInstaller` extracts all real files
 first and then calls `symlink()` for each entry, so a duplicate name throws `EEXIST` and aborts

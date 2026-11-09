@@ -232,6 +232,47 @@ the build (`symlink/file collisions`) instead of letting this reach a device.
 
 ---
 
+### `vim` is missing after an upgrade
+
+**Cause:** the app only extracts the bootstrap when `$PREFIX` is empty. Installing a new APK over an
+existing install leaves the old prefix in place, so vim never appears.
+
+**Fix:** remove (or rename) `files/usr` and start the app; it reinstalls the prefix from the new
+APK. Your `files/home` — dotfiles, `.ssh`, editor history — is untouched because it lives beside
+`usr`, not inside it.
+
+---
+
+### `E117: Unknown function` / `E1186` / no syntax highlighting in `vim`
+
+**Cause:** vim finds no runtime files. It has the *stock* prefix compiled in and would look in the
+other app's `share/vim`.
+
+**Fix:** `setup/add-ssh.sh` writes `etc/profile.d/03-sshterm-vimruntime.sh`, which exports
+`VIMRUNTIME` to the fork's own `share/vim/vim92`. Check with:
+
+```sh
+echo $VIMRUNTIME
+vim -es -c 'syntax on' -c 'echo &syntax' -c 'q' somefile.sh
+```
+
+The second line prints `sh` when the runtime is found.
+
+---
+
+### The terminal font is not Roboto Mono
+
+**Cause:** the bundled font lives in the APK as `res/font/roboto_mono.ttf` and is used only when
+`~/.termux/font.ttf` does not exist
+(`TermuxTerminalSessionActivityClient.checkForFontAndColors()`).
+
+**Check:** `ls -l ~/.termux/font.ttf`. A file there wins over the bundled font, by design — it is
+how the user installs their own.
+
+**Fix:** delete that file and restart the app to go back to the bundled font.
+
+---
+
 ### `ssh: not found`
 
 **Cause:** the archive is the stock one without openssh, or injection was skipped.

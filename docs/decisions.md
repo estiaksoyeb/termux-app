@@ -137,8 +137,8 @@ Recompiling bash and ncurses would need the Docker toolchain this project avoids
 
 **Decision:** delete everything unreachable from `ssh`.
 
-**Why:** 30.5 MB → 8.7 MB. The closure is computed, not guessed, so no required library is
-removed.
+**Why:** 30.5 MB → 8.7 MB for the ssh-only cut (22 MB once vim is included). The closure is computed,
+not guessed, so no required library is removed.
 
 **Revised after testing:** the first prune claimed "no loss of function" and was wrong — it
 also removed `bin/coreutils` and `clear`, so the shell had no `ls`, `cat`, `mkdir`, `chmod` or
@@ -152,6 +152,40 @@ includes `coreutils` (plus its ELF closure and its symlink aliases) and `clear`.
 **Why:** software belongs in Ubuntu. A second package manager on the phone side would need
 its own repository built for this exact prefix, and would add tens of megabytes for no
 benefit.
+
+### Ship an editor: vim
+
+**Decision:** inject the official Termux `vim` package into the bootstrap, and make it the only
+editor.
+
+**Why:** config files such as `~/.termux/termux.properties` and `~/.ssh/config` are plain text on
+the device. Without an editor the user has to edit them on a computer and copy them across — the
+exact friction that made the extra-keys problem take far longer than it should have. There is no
+package manager to add one later, so it has to be shipped.
+
+**Why vim and not nano:** vim's package carries its full runtime (syntax highlighting, filetype
+plugins, colors) and is the editor the user already reaches for. nano was the first choice and was
+dropped before the rebuild: it is present in the stock bootstrap but has no dependency tree worth
+keeping for a single-file editor.
+
+**Cost:** ~37 MB unpacked, ~7 MB compressed, mostly the runtime — of which 12 MB (`doc/`) was
+dropped as documentation.
+
+### Default font: Roboto Mono Nerd Font
+
+**Decision:** bundle `Roboto-Mono.ttf` as `res/font/roboto_mono.ttf` and use it whenever
+`~/.termux/font.ttf` is absent.
+
+**Why:** Termux's terminal reads its typeface from `~/.termux/font.ttf` and otherwise falls back to
+the system monospace font. Shipping the font as a resource is one file and one line of Java; no
+first-run copying, no asset pipeline, no state to get out of sync.
+
+**Why the user's file still wins:** dropping a font at `~/.termux/font.ttf` is how the user (or
+Termux:Styling) chooses a different font. Silently overriding it would make that impossible. The
+bundled font is the fallback, not a lock-in.
+
+**Why this file:** Roboto Mono patched with Nerd Font glyphs — a monospace font with the icon range
+the terminal needs for Powerline and prompt glyphs to render.
 
 ### Bootstrap built outside Gradle
 

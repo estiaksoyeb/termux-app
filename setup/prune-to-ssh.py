@@ -8,9 +8,10 @@ Keeps:
   - the ssh binaries and their ELF dependency closure,
   - certificates and ssh config,
   - termux bootstrap second-stage / login profile files,
-  - the shim utilities required by termux-exec and the login flow.
+  - the shim utilities required by termux-exec and the login flow,
+  - the vim editor, injected from the vim package, with its runtime.
 
-Everything else (git, python, coreutils tree, apt, editors, extra libs, man
+Everything else (git, python, coreutils tree, apt, extra libs, man
 pages, tests) is deleted, together with its SYMLINKS.txt entries.
 """
 
@@ -34,6 +35,9 @@ REQUIRED_BINS = {
     "wc", "cut", "tee", "sleep", "date", "printf", "test", "[", "true", "false",
     # terminal basics: `clear` is its own ncurses binary, not a coreutils alias
     "clear", "tput",
+    # editor: injected by add-ssh.sh from the vim package (not in the stock bootstrap).
+    # Its entry points are symlinks to libexec/vim/vim, so keep the real binary too.
+    "vim", "vi", "ex", "view", "vimdiff", "vimtutor", "editor",
 }
 
 REQUIRED_LIBEXEC_PREFIXES = ("coreutils",)
@@ -46,6 +50,8 @@ KEEP_ETC_PREFIXES = (
 
 KEEP_SHARE_PREFIXES = (
     "terminfo", "termux", "misc", "ca-certificates", "zoneinfo", "i18n",
+    # vim runtime: syntax, ftplugin, colors, autoload and the global vimrc
+    "vim",
 )
 
 
@@ -107,6 +113,15 @@ def main():
     # coreutils was only added to `keep` above; it must join the closure walk
     # too, otherwise its NEEDED libs (libandroid-selinux.so) are dropped.
     queue.append(os.path.join("bin", "coreutils"))
+
+    # vim lives in libexec/vim/ and bin/vim is a symlink to it. Keep the whole
+    # directory and walk its ELFs so libsodium/libiconv join the closure.
+    vim_dir = os.path.join(stage, "libexec", "vim")
+    if os.path.isdir(vim_dir):
+        for name in os.listdir(vim_dir):
+            rel = os.path.join("libexec", "vim", name)
+            if os.path.isfile(os.path.join(stage, rel)):
+                queue.append(rel)
 
     seen = set()
     while queue:
@@ -218,6 +233,11 @@ def main():
 
                 keep_it = False
                 if link_rel in ("bin/sh", "bin/dash", "bin/bash"):
+                    keep_it = True
+                # vim entry points (bin/vim -> ../libexec/vim/vim, ...), added to
+                # SYMLINKS.txt by add-ssh.sh because the package normally creates
+                # them through update-alternatives.
+                elif link_rel.startswith("bin/") and target_rel.startswith("../libexec/vim/"):
                     keep_it = True
                 # Coreutils aliases (bin/ls -> coreutils): keep the alias as long
                 # as the real multi-call binary survived the prune. Without these

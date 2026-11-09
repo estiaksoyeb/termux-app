@@ -256,7 +256,12 @@ See [decisions.md](decisions.md#signing) for why that matters and what to do abo
 
 ---
 
-## 9. What is *not* done
+## 9. What *is* done beyond the minimum
+
+- An **editor**: `vim` is inside the app, so config files can be fixed on the phone itself.
+- A **default font**: Roboto Mono Nerd Font, unless you install your own at `~/.termux/font.ttf`.
+
+## 10. What is *not* done
 
 - The app does **not** auto-connect. It opens a local shell, exactly like Termux.
 - There is **no** package manager inside it, by design. Software belongs in Ubuntu.

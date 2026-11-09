@@ -15,6 +15,7 @@ import android.widget.ListView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.res.ResourcesCompat;
 
 import com.termux.R;
 import com.termux.shared.interact.ShareUtils;
@@ -510,7 +511,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             }
             updateBackgroundColor();
 
-            final Typeface newTypeface = (fontFile.exists() && fontFile.length() > 0) ? Typeface.createFromFile(fontFile) : Typeface.MONOSPACE;
+            // Default terminal font: Roboto Mono Nerd Font, bundled as
+            // res/font/roboto_mono.ttf. A font the user drops at ~/.termux/font.ttf
+            // still wins.
+            final Typeface newTypeface = (fontFile.exists() && fontFile.length() > 0)
+                ? Typeface.createFromFile(fontFile)
+                : ResourcesCompat.getFont(mActivity, R.font.roboto_mono);
             mActivity.getTerminalView().setTypeface(newTypeface);
         } catch (Exception e) {
             Logger.logStackTraceWithMessage(LOG_TAG, "Error in checkForFontAndColors()", e);

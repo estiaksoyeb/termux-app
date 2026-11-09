@@ -161,5 +161,8 @@ succeed. This app cannot start another app's server.
 | `$PREFIX` follows the new name | `TermuxConstants.TERMUX_PACKAGE_NAME` | same, plus bootstrap path rewriting |
 | Only arm64 | root `build.gradle` (`abiFilters`) | `unzip -l` on the APK |
 | `ssh` present at runtime | `setup/build-bootstrap.sh` → embedded ZIP | bytes compared against the built ZIP |
+| `vim` present at runtime | `setup/add-ssh.sh` (package injection) + `setup/prune-to-ssh.py` (keep set) | `vim --version`, real file edit on device |
+| vim finds its runtime | `etc/profile.d/03-sshterm-vimruntime.sh` (`$VIMRUNTIME`) | `vim -es -c 'syntax on' -c 'echo &syntax'` prints `sh` |
+| Default terminal font | `app/src/main/res/font/roboto_mono.ttf`, used in `TermuxTerminalSessionActivityClient.checkForFontAndColors()` | screenshot with no `~/.termux/font.ttf` present |
 | Loadable on 16 KB-page devices | `-Wl,-z,max-page-size=16384` in all three `Android.mk` | `readelf -lW` |
 | Build reproducible on this host | `setup/ndk-shim.sh` | clean rebuild |
