@@ -211,6 +211,29 @@ archive; deleting it forces a 30 MB re-download and a full re-prune for no reaso
 [bootstrap.md §6](bootstrap.md#6-auto-connect-not-implemented) so it can be enabled
 later without rediscovering it.
 
+### OpenSSH user paths: override with `-o`, not by patching the binaries
+
+**Decision:** the generated `ssh`/`scp`/`sftp` wrappers pass
+`-o UserKnownHostsFile`, `-o GlobalKnownHostsFile` and `-o IdentityFile` pointing at the
+fork's own directories.
+
+**Why:** OpenSSH derives those defaults from the passwd home/prefix compiled into the
+binary, and Termux bakes in the *stock* paths because Android has no usable passwd entry.
+`$HOME` does not override them (confirmed with `ssh.real -G`).
+
+Patching the ELF was investigated and rejected. The fork path is 12 bytes longer, the
+string is followed immediately by the next one with no slack, `.rodata` is packed against
+`.eh_frame_hdr`, and the RX `PT_LOAD` ends exactly where `.plt` ends — so growing the
+string means relocating every following section. Relocating the string into `.data`
+corrupts it: that segment's first page is shared with the preceding `LOAD`, which is not
+16 KB-aligned. A same-length in-place edit does work, which confirms `.rodata` addressing
+is fine and isolates the failure to the relocation.
+
+**Consequence:** the wrapper is the only place that knows about this. `ssh-add`,
+`ssh-keygen`, `ssh-keyscan` and `ssh-copy-id` reject `-o`, so they get no options—
+the first three use no user host-key/identity files from that home anyway, and
+`ssh-copy-id` is a shell script that calls `ssh` and inherits its wrapper.
+
 ---
 
 ## Signing

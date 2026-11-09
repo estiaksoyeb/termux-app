@@ -289,6 +289,44 @@ how the user installs their own.
 
 ---
 
+### `ssh` reads the *stock* Termux `known_hosts`
+
+**Symptom:** connecting prints
+
+```
+hostkeys_find_by_key_hostfile: hostkeys_foreach failed for
+/data/data/com.termux/files/home/.ssh/known_hosts: Permission denied
+```
+
+or ssh silently consults stock Termux's known-hosts list.
+
+**Cause:** OpenSSH builds its default `UserKnownHostsFile`, `GlobalKnownHostsFile` and
+`IdentityFile` paths from the passwd home/prefix compiled into the binary. Android has
+no usable passwd entry, so Termux bakes in `/data/data/com.termux/files/home` and
+`/data/data/com.termux/files/usr`. Setting `$HOME` does **not** override these —
+verified with `ssh.real -G`.
+
+**Why not patch the binary:** the fork's path is 12 bytes longer, the compiled-in string
+has no slack after it, and every loaded segment is packed solid (RX `filesz` ends exactly
+where `.plt` ends). A same-length in-place edit works, but a longer one needs a full ELF
+relayout. Relocating into `.data` corrupts the string because that segment's first page is
+overlapped by the preceding `LOAD` under 16 KB pages.
+
+**Fix:** the generated wrapper in `setup/add-ssh.sh` (step 7) passes the correct paths with
+`-o`, which OpenSSH honours over the compiled-in defaults. Only `ssh`, `scp` and `sftp`
+take these options; `ssh-add`, `ssh-keygen`, `ssh-keyscan` and `ssh-copy-id` reject `-o`
+(and `ssh-copy-id` is a shell script that calls `ssh` itself, so it inherits the fix).
+
+**Check:**
+
+```sh
+ssh -G -- localhost | grep -E 'userknownhostsfile|globalknownhostsfile'
+```
+
+Both lines must start with `/data/data/com.estiaksoyeb.termux/`, not `com.termux`.
+
+---
+
 ## Verification / results
 
 ### Native libraries are not 16 KB aligned
