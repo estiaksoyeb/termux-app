@@ -41,6 +41,11 @@ android {
     }
 
     defaultConfig {
+        // This fork installs alongside (never over) the stock com.termux app.
+        // Changing this changes $PREFIX, so it must be decided before the
+        // bootstrap binaries are compiled. See docs/bootstrap.md.
+        applicationId "com.estiaksoyeb.termux"
+
         minSdkVersion project.properties.minSdkVersion.toInteger()
         targetSdkVersion project.properties.targetSdkVersion.toInteger()
         versionCode 118
@@ -51,7 +56,7 @@ android {
 
         buildConfigField "String", "TERMUX_PACKAGE_VARIANT", "\"" + project.ext.packageVariant + "\"" // Used by TermuxApplication class
 
-        manifestPlaceholders.TERMUX_PACKAGE_NAME = "com.termux"
+        manifestPlaceholders.TERMUX_PACKAGE_NAME = "com.estiaksoyeb.termux"
         manifestPlaceholders.TERMUX_APP_NAME = "Termux"
         manifestPlaceholders.TERMUX_API_APP_NAME = "Termux:API"
         manifestPlaceholders.TERMUX_BOOT_APP_NAME = "Termux:Boot"
@@ -164,11 +169,24 @@ def validateVersionName(String versionName) {
         throw new GradleException("The versionName '"  + versionName + "' is not a valid version as per semantic version '2.0.0' spec in the format 'major.minor.patch(-prerelease)(+buildmetadata)'. https://semver.org/spec/v2.0.0.html.")
 }
 
-def downloadBootstrap(String arch, String expectedChecksum, String version) {
-    def digest = java.security.MessageDigest.getInstance("SHA-256")
+// Local fork: if a bootstrap ZIP is already present for an arch, always use it as-is.
+// This lets setup/build-bootstrap.sh (or a hand-built minimal ZIP) win over the
+// stock upstream archive. Set TERMUX_FORCE_BOOTSTRAP_DOWNLOAD=1 to restore upstream
+// checksum behaviour. See docs/bootstrap.md.
+ext.keepLocalBootstrap = System.getenv("TERMUX_FORCE_BOOTSTRAP_DOWNLOAD") != "1"
+// Stock archives for other ABIs are never needed by this arm64-only fork.
+ext.skipStockBootstrapDownload = true
 
+def downloadBootstrap(String arch, String expectedChecksum, String version) {
     def localUrl = "src/main/cpp/bootstrap-" + arch + ".zip"
     def file = new File(projectDir, localUrl)
+    if (project.ext.keepLocalBootstrap && file.exists()) {
+        logger.quiet("Using existing local bootstrap: " + localUrl + " (skipping download/checksum)")
+        return
+    }
+
+    def digest = java.security.MessageDigest.getInstance("SHA-256")
+
     if (file.exists()) {
         def buffer = new byte[8192]
         def input = new FileInputStream(file)
@@ -207,8 +225,43 @@ def downloadBootstrap(String arch, String expectedChecksum, String version) {
     }
 }
 
+// The bootstrap ZIP is pulled into libtermux-bootstrap.so by `.incbin`, but
+// ndk-build only watches the sources named in Android.mk. Without a nudge it
+// silently reuses the old object and the APK keeps stale bytes.
+//
+// Declaring the ZIP as a task input is NOT enough: ndk-build (make) decides
+// freshness itself from its own object timestamps. So we also remove the
+// bootstrap object when the ZIP is newer than it, forcing a real re-assemble.
+def bootstrapZipFile = file("src/main/cpp/bootstrap-aarch64.zip")
+tasks.matching { it.name.startsWith("buildNdkBuild") }.configureEach { t ->
+    t.inputs.file(bootstrapZipFile).withPropertyName("bootstrapZip").optional(true)
+    t.doFirst {
+        if (!bootstrapZipFile.exists()) return
+        def objsRoot = file("$buildDir/intermediates/cxx")
+        if (!objsRoot.exists()) return
+        objsRoot.eachDirRecurse { d ->
+            if (!d.name.equals("objs-debug") && !d.name.equals("objs-release")) return
+            fileTree(d).matching { include "**/termux-bootstrap/*.o" }.files.each { o ->
+                if (bootstrapZipFile.lastModified() > o.lastModified()) {
+                    o.delete()
+                    logger.lifecycle("bootstrap ZIP changed: removed stale ${o.name}")
+                }
+            }
+        }
+    }
+}
+tasks.matching { it.name == "mergeDebugJniLibFolders" || it.name == "mergeReleaseJniLibFolders" }.configureEach { t ->
+    t.inputs.file(bootstrapZipFile).withPropertyName("bootstrapZip").optional(true)
+}
+
 clean {
     doLast {
+        // Upstream deletes the downloaded bootstrap ZIPs here. This fork builds
+        // its own archive with setup/build-bootstrap.sh, so deleting it would
+        // force a full rebuild for no reason.
+        if (project.ext.has("skipStockBootstrapDownload") && project.ext.skipStockBootstrapDownload) {
+            return
+        }
         def tree = fileTree(new File(projectDir, 'src/main/cpp'))
         tree.include 'bootstrap-*.zip'
         tree.each { it.delete() }
@@ -217,6 +270,12 @@ clean {
 
 task downloadBootstraps() {
     doLast {
+        // This fork ships its own pruned bootstrap and builds arm64 only, so the
+        // stock archives are never used. Regenerate with setup/build-bootstrap.sh.
+        if (project.ext.has("skipStockBootstrapDownload") && project.ext.skipStockBootstrapDownload) {
+            logger.quiet("Skipping stock bootstrap download (fork uses app/src/main/cpp/bootstrap-aarch64.zip)")
+            return
+        }
         def packageVariant = project.ext.packageVariant
         if (packageVariant == "apt-android-7") {
             def version = "2026.02.12-r1" + "%2B" + "apt.android-7"

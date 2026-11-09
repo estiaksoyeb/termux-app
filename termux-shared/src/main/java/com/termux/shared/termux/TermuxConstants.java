@@ -12,10 +12,14 @@ import java.util.Formatter;
 import java.util.List;
 
 /*
- * Version: v0.53.0
+ * Version: v0.53.1
  * SPDX-License-Identifier: MIT
  *
  * Changelog
+ *
+ * - 0.53.1 (2026-11-09)
+ *      - Fork: changed `TERMUX_PACKAGE_NAME` to "com.estiaksoyeb.termux" so the app
+ *        installs alongside the stock Termux app instead of replacing it.
  *
  * - 0.1.0 (2021-03-08)
  *      - Initial Release.
@@ -349,7 +353,7 @@ public final class TermuxConstants {
     /** Termux app name */
     public static final String TERMUX_APP_NAME = "Termux"; // Default: "Termux"
     /** Termux package name */
-    public static final String TERMUX_PACKAGE_NAME = "com.termux"; // Default: "com.termux"
+    public static final String TERMUX_PACKAGE_NAME = "com.estiaksoyeb.termux"; // Default: "com.termux"
     /** Termux GitHub repo name */
     public static final String TERMUX_GITHUB_REPO_NAME = "termux-app"; // Default: "termux-app"
     /** Termux GitHub repo url */

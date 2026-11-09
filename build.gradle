@@ -15,3 +15,39 @@ allprojects {
         maven { url "https://jitpack.io" }
     }
 }
+
+// This fork builds with the system-installed NDK r27 instead of the upstream r29.
+// See docs/toolchain.md for the rationale and the 16 KB page-size caveat.
+def sshtermNdkVersion = "27.0.12077973"
+
+subprojects {
+    afterEvaluate { project ->
+        if (project.plugins.hasPlugin("com.android.application") || project.plugins.hasPlugin("com.android.library")) {
+            project.android.ndkVersion = sshtermNdkVersion
+        }
+
+        // This fork targets one device: arm64-v8a. Restricting the ABI in every
+        // Android module also limits ndk-build work and the embedded bootstrap.
+        //
+        // `abiFilters` and `splits.abi` cannot be combined, so ABI splits (which
+        // are opt-in via the splitAPKsFor*Builds properties) are disabled first.
+        if (gradle.ext.has("useArm64V8aOnly") && gradle.ext.useArm64V8aOnly) {
+            project.android.splits.abi.enable = false
+            project.android.defaultConfig.ndk.abiFilters.clear()
+            project.android.defaultConfig.ndk.abiFilters.add("arm64-v8a")
+        }
+    }
+}
+
+// Local aarch64 host support (see setup/ndk-shim.sh).
+//
+// The NDK's prebuilt toolchain is x86_64-only, and this machine's copy has no
+// libgcc for API 21, so ndk-build cannot link here without the wrapper tree.
+// AGP resolves `ndkVersion` against the SDK and ignores `android.ndkPath`, so
+// the shadow tree is injected one level lower: ndk-build honours a `GNUMAKE`
+// environment variable, and the shadow `make` adds `NDK_ROOT=<shadow tree>`.
+//
+// Enable with:
+//   eval "$(./setup/ndk-shim.sh --env)"
+//   ./gradlew :app:assembleDebug
+// On x86_64 nothing here is needed.
