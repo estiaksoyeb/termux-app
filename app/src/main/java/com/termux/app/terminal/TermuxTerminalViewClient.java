@@ -359,6 +359,11 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
 
     @Override
     public boolean onCodePoint(final int codePoint, boolean ctrlDown, TerminalSession session) {
+        // A toggle extra-key (e.g. a tmux prefix) has done its job once a character is typed, so
+        // return it to the normal color like a CTRL press that is released after the next key.
+        if (mActivity.getExtraKeysView() != null)
+            mActivity.getExtraKeysView().onTerminalInputTyped();
+
         if (mVirtualFnKeyDown) {
             int resultingKeyCode = -1;
             int resultingCodePoint = -1;

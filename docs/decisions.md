@@ -187,6 +187,24 @@ bundled font is the fallback, not a lock-in.
 **Why this file:** Roboto Mono patched with Nerd Font glyphs — a monospace font with the icon range
 the terminal needs for Powerline and prompt glyphs to render.
 
+### Toggle-state macro buttons
+
+**Decision:** an extra-key may set `toggle: true` so its label stays in the active text color between taps.
+
+**Why:** only `CTRL`/`ALT`/`SHIFT`/`FN` have state, so a key like `{ macro: "CTRL b", display: "tmux" }`
+gave no feedback after it was pressed; the only cue was a background flash while the finger was
+down. Keys that enter a mode (a tmux prefix, an ssh session) need a persistent "on" cue.
+
+**Scope:** text color only — the button is colored with `extraKeysButtonActiveTextColor` while
+toggled, exactly like CTRL's label. No background change is applied.
+
+**Clearing:** a toggle stays lit only until the next character is typed into the terminal
+(`TermuxTerminalViewClient.onCodePoint`), mirroring CTRL, which is released after the following
+key. Typing `3` after a tmux prefix returns the button to its normal color.
+
+**Usage:** `{ macro: "CTRL b", display: "窗", toggle: true }`. Long-press and swipe-up popups are
+unchanged.
+
 ### Bootstrap built outside Gradle
 
 **Decision:** `setup/build-bootstrap.sh`.

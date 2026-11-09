@@ -9,6 +9,7 @@ import android.provider.Settings;
 import android.util.AttributeSet;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Executors;
@@ -203,6 +204,19 @@ public final class ExtraKeysView extends GridLayout {
      * and a swipe up action is done on an extra key. */
     protected PopupWindow mPopupWindow;
 
+    /**
+     * The {@link MaterialButton}s for macro buttons that define {@code toggle: true} and are currently
+     * toggled on. They keep the active text color until the next input is typed.
+     */
+    protected final Set<MaterialButton> mToggledButtons = new HashSet<>();
+
+    /**
+     * Number of terminal inputs still to be ignored before a toggle lit by its own macro is cleared.
+     * A {@code toggle: true} button's macro (e.g. {@code CTRL b}) is itself written to the terminal
+     * as code points, so the clearing hook must skip those and fire on the following user input.
+     */
+    protected int mIgnoreToggleClears;
+
     protected ScheduledExecutorService mScheduledExecutor;
     protected Handler mHandler;
     protected SpecialButtonsLongHoldRunnable mSpecialButtonsLongHoldRunnable;
@@ -327,6 +341,70 @@ public final class ExtraKeysView extends GridLayout {
         mButtonActiveBackgroundColor = buttonActiveBackgroundColor;
     }
 
+    /**
+     * Toggle a button's active state. A toggled button keeps its text in the active text color,
+     * the same way {@link SpecialButton}s like CTRL behave. The button background is not changed.
+     */
+    public void setButtonToggled(@NonNull MaterialButton button, boolean toggled) {
+        if (toggled)
+            mToggledButtons.add(button);
+        else
+            mToggledButtons.remove(button);
+        button.setTextColor(toggled ? mButtonActiveTextColor : mButtonTextColor);
+    }
+
+    /** Check whether a button is currently toggled on. */
+    public boolean isButtonToggled(@NonNull MaterialButton button) {
+        return mToggledButtons.contains(button);
+    }
+
+    /**
+     * Clear the active color of every toggled button except {@code except}. Called when text is
+     * typed into the terminal, so a toggle only stays lit until the next user input, like a
+     * {@link SpecialButton} that is released after the next key.
+     */
+    public void clearOtherToggledButtons(@Nullable MaterialButton except) {
+        for (MaterialButton toggledButton : new ArrayList<>(mToggledButtons)) {
+            if (toggledButton != except)
+                setButtonToggled(toggledButton, false);
+        }
+    }
+
+    /**
+     * Arm a toggle so that the input it is about to send does not clear it. The next
+     * {@code toClearCount} terminal inputs are skipped, and the input after them clears it.
+     */
+    public void ignoreToggleClearsForInputs(int toClearCount) {
+        mIgnoreToggleClears = Math.max(mIgnoreToggleClears, toClearCount);
+    }
+
+    /**
+     * Count the terminal inputs a macro will produce, so the toggle's own output is not mistaken
+     * for the user input that should clear it. Modifier words (CTRL/ALT/SHIFT/FN) send nothing.
+     */
+    protected int countMacroInputs(@NonNull ExtraKeyButton buttonInfo) {
+        int count = 0;
+        for (String key : buttonInfo.getKey().split(" ")) {
+            if (SpecialButton.CTRL.getKey().equals(key) || SpecialButton.ALT.getKey().equals(key)
+                || SpecialButton.SHIFT.getKey().equals(key) || SpecialButton.FN.getKey().equals(key))
+                continue;
+            count += Math.max(1, key.codePointCount(0, key.length()));
+        }
+        return count;
+    }
+
+    /**
+     * Called when a character is typed into the terminal. Clears any toggle that is no longer
+     * pending its own sent input, which is the case for a tmux prefix once the tab number is typed.
+     */
+    public void onTerminalInputTyped() {
+        if (mIgnoreToggleClears > 0) {
+            mIgnoreToggleClears--;
+            return;
+        }
+        clearOtherToggledButtons(null);
+    }
+
     /** Set {@link #mButtonTextAllCaps}. */
     public void setButtonTextAllCaps(boolean buttonTextAllCaps) {
         mButtonTextAllCaps = buttonTextAllCaps;
@@ -390,6 +468,9 @@ public final class ExtraKeysView extends GridLayout {
         for(SpecialButtonState state : mSpecialButtons.values())
             state.buttons = new ArrayList<>();
 
+        mToggledButtons.clear();
+        mIgnoreToggleClears = 0;
+
         removeAllViews();
 
         ExtraKeyButton[][] buttons = extraKeysInfo.getMatrix();
@@ -413,8 +494,16 @@ public final class ExtraKeysView extends GridLayout {
                 button.setTextColor(mButtonTextColor);
                 button.setAllCaps(mButtonTextAllCaps);
                 button.setPadding(0, 0, 0, 0);
+                setButtonToggled(button, false);
 
                 button.setOnClickListener(view -> {
+                    // The toggle stays lit until the next user input. Its own macro writes code
+                    // points to the terminal, so those are skipped when counting the next input.
+                    boolean wasToggled = buttonInfo.isToggle() && mToggledButtons.contains(button);
+                    boolean nowToggled = buttonInfo.isToggle() && !wasToggled;
+                    if (nowToggled)
+                        ignoreToggleClearsForInputs(countMacroInputs(buttonInfo));
+                    setButtonToggled(button, nowToggled);
                     performExtraKeyButtonHapticFeedback(view, buttonInfo, button);
                     onAnyExtraKeyButtonClick(view, buttonInfo, button);
                 });
