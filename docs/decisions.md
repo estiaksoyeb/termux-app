@@ -234,6 +234,15 @@ is fine and isolates the failure to the relocation.
 the first three use no user host-key/identity files from that home anyway, and
 `ssh-copy-id` is a shell script that calls `ssh` and inherits its wrapper.
 
+### Create `~/.ssh` on first shell start
+
+**Decision:** a `profile.d` script makes `~/.ssh` (mode `700`) if it is missing.
+
+**Why:** ssh never creates it, and silently refuses to write `known_hosts` without it. The
+stock install happens to ship the directory, so the failure only appears on a fresh fork —
+and its symptom (`Failed to add the host…`, then `yes` on every connection) looks like
+the path bug above but is a different cause.
+
 ---
 
 ## Signing

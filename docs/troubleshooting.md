@@ -327,6 +327,39 @@ Both lines must start with `/data/data/com.estiaksoyeb.termux/`, not `com.termux
 
 ---
 
+### Every connection asks to trust the host again (`yes` each time)
+
+**Symptom:** after answering `yes`, the next connection asks again, and the previous one
+printed
+
+```
+Failed to add the host to the list of known hosts (…/.ssh/known_hosts)
+```
+
+**Cause:** ssh never creates `~/.ssh` itself. With stock Termux the directory already
+exists, so this only shows up on a fresh fork: nothing is saved, so nothing is remembered.
+
+**Fix:** `etc/profile.d/04-sshterm-ssh-dir.sh` creates `~/.ssh` with mode `700` on first
+shell start. For an installation that predates it:
+
+```sh
+mkdir -p ~/.ssh && chmod 700 ~/.ssh
+```
+
+**Check:** `ls -la ~/.ssh/known_hosts` after accepting a host key — the file should exist
+and grow with each new host.
+
+---
+
+### `no such identity: …/.ssh/id_rsa: No such file or directory`
+
+**Cause:** not an error. ssh is now looking in the *correct* directory (the fork's home) and
+reporting that those key files don't exist yet. It is only noise until you create keys.
+
+**Silence it:** `ssh-keygen -t ed25519` creates the first file in the list.
+
+---
+
 ## Verification / results
 
 ### Native libraries are not 16 KB aligned
